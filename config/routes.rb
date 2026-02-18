@@ -1,10 +1,12 @@
 Rails.application.routes.draw do
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
+  post "/webhooks/:provider", to: "webhooks#receive"
 
-  # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
-  # Can be used by load balancers and uptime monitors to verify that the app is live.
-  get "up" => "rails/health#show", as: :rails_health_check
+  scope "/webhooks" do
+    get "/deliveries", to: "webhooks#index"
+    get "/deliveries/:id", to: "webhooks#show"
+    post "/deliveries/:id/replay", to: "webhooks#replay"
+    get "/dead_letters", to: "webhooks#dead_letters"
+  end
 
-  # Defines the root path route ("/")
-  # root "posts#index"
+  get "/health", to: "health#show"
 end
