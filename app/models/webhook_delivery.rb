@@ -1,11 +1,13 @@
 class WebhookDelivery < ApplicationRecord
   include Paginatable
 
+  VALID_PROVIDERS = %w[github stripe generic].freeze
+
   has_one :dead_letter, dependent: :destroy
 
   enum :status, { pending: 0, processing: 1, completed: 2, failed: 3, dead: 4 }
 
-  validates :provider, presence: true
+  validates :provider, presence: true, inclusion: { in: VALID_PROVIDERS }
   validates :delivery_id, presence: true, uniqueness: true
   validates :status, presence: true
 

@@ -13,8 +13,14 @@ module Providers
 
       raise SignatureVerifier::InvalidSignature, "Invalid signature format" if timestamp.blank? || signatures.blank?
 
-      # Check timestamp tolerance
-      if (Time.now.to_i - timestamp.to_i).abs > TIMESTAMP_TOLERANCE
+      # Check timestamp tolerance — Integer() raises ArgumentError for invalid input
+      begin
+        ts = Integer(timestamp)
+      rescue ArgumentError
+        raise SignatureVerifier::InvalidSignature, "Invalid timestamp format"
+      end
+
+      if (Time.now.to_i - ts).abs > TIMESTAMP_TOLERANCE
         raise SignatureVerifier::InvalidSignature, "Timestamp outside tolerance"
       end
 
@@ -27,7 +33,7 @@ module Providers
     end
 
     def extract_metadata(raw_body:, headers:)
-      payload = JSON.parse(raw_body) rescue {}
+      payload = parse_json_body(raw_body)
       {
         delivery_id: payload["id"] || SecureRandom.uuid,
         event_type: payload["type"] || "unknown"

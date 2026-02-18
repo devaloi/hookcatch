@@ -32,7 +32,7 @@ class ApplicationController < ActionController::API
     return false if payload["exp"] && Time.now.to_i > payload["exp"]
 
     true
-  rescue StandardError
+  rescue JSON::ParserError, ArgumentError, OpenSSL::HMACError
     false
   end
 

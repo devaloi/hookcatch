@@ -45,7 +45,7 @@ POST /webhooks/:provider
 ## Setup
 
 ```bash
-git clone <repo-url> && cd hookcatch
+git clone https://github.com/devaloi/hookcatch.git && cd hookcatch
 cp .env.example .env    # edit with your secrets
 bundle install
 rails db:create db:migrate

@@ -7,19 +7,21 @@ class WebhooksController < ApplicationController
     provider = params[:provider]
 
     unless SignatureVerifier::PROVIDERS.key?(provider)
-      return render json: { error: "Unknown provider" }, status: :not_found
+      return render json: { error: "Unknown provider: #{provider}" }, status: :not_found
     end
+
+    http_headers = extract_relevant_headers(request)
 
     SignatureVerifier.verify!(
       provider: provider,
       raw_body: @raw_body,
-      headers: request.headers.env.select { |k, _| k.start_with?("HTTP_") }
+      headers: http_headers
     )
 
     metadata = SignatureVerifier.extract_metadata(
       provider: provider,
       raw_body: @raw_body,
-      headers: request.headers.env.select { |k, _| k.start_with?("HTTP_") }
+      headers: http_headers
     )
 
     # Idempotency check
@@ -33,7 +35,7 @@ class WebhooksController < ApplicationController
       delivery_id: metadata[:delivery_id],
       event_type: metadata[:event_type],
       payload: JSON.parse(@raw_body),
-      headers: request.headers.env.select { |k, _| k.start_with?("HTTP_") },
+      headers: http_headers,
       status: :pending
     )
 
@@ -64,7 +66,7 @@ class WebhooksController < ApplicationController
     delivery = WebhookDelivery.find(params[:id])
     render json: delivery_json(delivery, include_payload: true)
   rescue ActiveRecord::RecordNotFound
-    render json: { error: "Not found" }, status: :not_found
+    render json: { error: "Delivery not found (id=#{params[:id]})" }, status: :not_found
   end
 
   # POST /webhooks/deliveries/:id/replay
@@ -75,7 +77,7 @@ class WebhooksController < ApplicationController
 
     render json: { status: "replayed", delivery_id: delivery.delivery_id }
   rescue ActiveRecord::RecordNotFound
-    render json: { error: "Not found" }, status: :not_found
+    render json: { error: "Delivery not found (id=#{params[:id]})" }, status: :not_found
   end
 
   # GET /webhooks/dead_letters
@@ -95,6 +97,10 @@ class WebhooksController < ApplicationController
   def set_raw_body
     @raw_body = request.body.read
     request.body.rewind
+  end
+
+  def extract_relevant_headers(request)
+    request.headers.env.select { |k, _| k.start_with?("HTTP_") }
   end
 
   def delivery_json(delivery, include_payload: false)

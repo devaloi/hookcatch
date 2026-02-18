@@ -19,7 +19,7 @@ RSpec.describe ProcessWebhookJob, type: :job do
     context "when processing fails" do
       it "marks delivery as failed and retries" do
         delivery = create(:webhook_delivery, status: :pending, attempts: 0)
-        allow(WebhookProcessor).to receive(:process).and_raise(StandardError, "boom")
+        allow(WebhookProcessor).to receive(:process).and_raise(RuntimeError, "boom")
 
         described_class.new.perform(delivery.id)
 
@@ -31,7 +31,7 @@ RSpec.describe ProcessWebhookJob, type: :job do
 
       it "creates dead letter after max attempts" do
         delivery = create(:webhook_delivery, status: :pending, attempts: 2)
-        allow(WebhookProcessor).to receive(:process).and_raise(StandardError, "fatal")
+        allow(WebhookProcessor).to receive(:process).and_raise(RuntimeError, "fatal")
 
         expect {
           described_class.new.perform(delivery.id)

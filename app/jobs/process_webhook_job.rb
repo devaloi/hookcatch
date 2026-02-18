@@ -1,6 +1,8 @@
 class ProcessWebhookJob < ApplicationJob
   queue_as :default
 
+  BACKOFF_SCHEDULE = [ 30, 120, 600 ].freeze
+
   def perform(delivery_id)
     delivery = WebhookDelivery.find(delivery_id)
     return if delivery.completed? || delivery.dead?
@@ -12,7 +14,9 @@ class ProcessWebhookJob < ApplicationJob
     delivery.update!(status: :completed, processed_at: Time.current)
   rescue WebhookProcessor::HandlerError => e
     handle_failure(delivery, e)
-  rescue StandardError => e
+  rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
+    handle_failure(delivery, e)
+  rescue RuntimeError => e
     handle_failure(delivery, e)
   end
 
@@ -26,10 +30,9 @@ class ProcessWebhookJob < ApplicationJob
     else
       delivery.update!(
         status: :failed,
-        error_message: "#{error.class}: #{error.message}"
+        error_message: "#{error.class}: #{error.message} (delivery=#{delivery.id}, provider=#{delivery.provider})"
       )
-      # Retry with exponential backoff: 30s, 2min, 10min
-      backoff = [ 30, 120, 600 ].fetch(delivery.attempts - 1, 600)
+      backoff = BACKOFF_SCHEDULE.fetch(delivery.attempts - 1, BACKOFF_SCHEDULE.last)
       self.class.set(wait: backoff.seconds).perform_later(delivery.id)
     end
   end
@@ -39,12 +42,12 @@ class ProcessWebhookJob < ApplicationJob
       webhook_delivery: delivery,
       error_class: error.class.name,
       error_message: error.message,
-      backtrace: error.backtrace&.first(20)&.join("\n"),
+      backtrace: error.backtrace&.first(HookCatch::BACKTRACE_LIMIT)&.join("\n"),
       failed_at: Time.current
     )
     delivery.update!(
       status: :dead,
-      error_message: "#{error.class}: #{error.message}"
+      error_message: "#{error.class}: #{error.message} (delivery=#{delivery.id}, provider=#{delivery.provider})"
     )
   end
 end

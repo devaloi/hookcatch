@@ -13,7 +13,7 @@ module Providers
     end
 
     def extract_metadata(raw_body:, headers:)
-      payload = JSON.parse(raw_body) rescue {}
+      payload = parse_json_body(raw_body)
       {
         delivery_id: headers["HTTP_X_GITHUB_DELIVERY"] || SecureRandom.uuid,
         event_type: headers["HTTP_X_GITHUB_EVENT"] || "unknown"
