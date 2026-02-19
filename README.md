@@ -1,5 +1,7 @@
 # hookcatch
 
+[![CI](https://github.com/devaloi/hookcatch/actions/workflows/ci.yml/badge.svg)](https://github.com/devaloi/hookcatch/actions/workflows/ci.yml)
+
 A webhook ingestion service built with Rails API mode — signature verification, idempotent processing, async job handling, and dead letter queue for failed deliveries.
 
 ## Architecture
